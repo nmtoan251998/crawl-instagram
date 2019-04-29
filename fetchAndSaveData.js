@@ -9,13 +9,8 @@ let storyDataJSON = [],
 // Content's images container;
 let imgSourcesSetContainer = [];
 
-const savedFilename = 'thaopau_',      
+const savedFilename = 'ununneee',      
       baseURL = `https://www.instagram.com/${savedFilename}/`;
-
-fs.appendFile('../data/ListOfUsers.txt', savedFilename + '\n', 'utf8', (err) => {
-    if(err) throw err;
-    // console.log('Data are written into ListOfUsers.txt');
-})
       
 const writeFile = (content, filename, expand) => {
     try {
@@ -130,4 +125,8 @@ const download = async (uri, filename, cb) => {
     await browser.close();
 })();
 
-
+// write user infor after get information
+fs.appendFile('../data/ListOfUsers.txt', `name: ${savedFilename}, URL: ${baseURL}` + '\n', 'utf8', (err) => {
+    if(err) throw err;
+    // console.log('Data are written into ListOfUsers.txt');
+})
