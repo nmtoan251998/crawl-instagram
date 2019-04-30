@@ -2,12 +2,12 @@ const puppeteer = require('puppeteer'),
       fs = require('fs'),
       imgDownload = require('image-downloader');    
 
-const savedFilename = '_khvan26_',      
-      baseURL = `https://www.instagram.com/${savedFilename}/`; 
+const userName = 'loungu',      
+      baseURL = `https://www.instagram.com/${userName}/`; 
             
 const writeFile = (content, filename, expand) => {
     try {
-        const dir = `../data/${savedFilename}`;
+        const dir = `../data/${userName}`;
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir);
         }
@@ -23,7 +23,7 @@ const writeFile = (content, filename, expand) => {
 
 const downloadImages = async (uri) => {            
     try {        
-        const dir = `../image/${savedFilename}`;
+        const dir = `../image/${userName}`;
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir);
         }
@@ -72,7 +72,7 @@ const crawlMainData = async (page) => {
 
 const crawlHTML = async (page) => {
     const HTML_DOM = await page.content();             
-    writeFile(HTML_DOM, `${savedFilename}IG`, 'html');
+    writeFile(HTML_DOM, `${userName}IG`, 'html');
 }
 
 const saveMainDataToFile = async (container) => {
@@ -93,13 +93,13 @@ const saveMainDataToFile = async (container) => {
 
     // save data to local files
     containerJSON = await JSON.stringify(containerJSON, null, '\t');
-    writeFile(containerJSON, `${savedFilename}MainData`, 'json');    
+    writeFile(containerJSON, `${userName}MainData`, 'json');    
 
     imgSourcesSetContainer.forEach((imgSrc, index) => downloadImages(imgSrc));    
 }
 
 // run puppeteer
-const getData = async () => {             
+module.exports.getData = async () => {             
     const browser = await puppeteer.launch({ headless: false });    
     const page = await browser.newPage();     
     page.setViewport({ width: 1680, height: 1200 });
@@ -111,7 +111,7 @@ const getData = async () => {
     saveMainDataToFile(mainData);
             
     // write user infor after get information
-    fs.appendFile('../data/ListOfUsers.txt', `name: ${savedFilename}, URL: ${baseURL}` + '\n', 'utf8', (err) => {
+    fs.appendFile('../data/ListOfUsers.txt', `name: ${userName}, URL: ${baseURL}` + '\n', 'utf8', (err) => {
         if(err) throw err;
         console.log('Data are written into ListOfUsers.txt');
     })
@@ -120,5 +120,3 @@ const getData = async () => {
     console.log('Stop crawling data!');
     await browser.close();
 };
-
-getData();
