@@ -1,17 +1,10 @@
 const puppeteer = require('puppeteer'),
       fs = require('fs'),
-      request = require('request');    
+      imgDownload = require('image-downloader');    
 
-// JSON arrays to store data info to files
-let storyDataJSON = [],
-    mainDataJSON = [];
-
-// Content's images container;
-let imgSourcesSetContainer = [];
-
-const savedFilename = 'ununneee',      
-      baseURL = `https://www.instagram.com/${savedFilename}/`;
-      
+const savedFilename = '_khvan26_',      
+      baseURL = `https://www.instagram.com/${savedFilename}/`; 
+            
 const writeFile = (content, filename, expand) => {
     try {
         const dir = `../data/${savedFilename}`;
@@ -28,51 +21,37 @@ const writeFile = (content, filename, expand) => {
     }    
 };
 
-const download = async (uri, filename, cb) => {    
+const download = async (uri) => {            
     try {        
         const dir = `../image/${savedFilename}`;
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir);
         }
-        
-        request.head(uri, (err, res, body) => {
-            // console.log('content-type: ', res.headers['content-type']);
-            // console.log('content-length: ', res.headers['content-length']);
-            request(uri).pipe(fs.createWriteStream(`${dir}/${filename}`)).on('close', cb);
-        });
+
+        let saveAll = { url: uri, dest: '../image/images' }
+        imgDownload.image(saveAll)
+            .then(({ filename, image }) => {
+                console.log('File saved to', filename)
+            })
+            .catch((err) => {
+                console.error(err)
+            })
+    
+
+        let saveEach = { url: uri, dest: dir }
+        imgDownload.image(saveEach)
+            .then(({ filename, image }) => {
+                console.log('File saved to', filename)
+            })
+            .catch((err) => {
+                console.error(err)
+            })
     } catch (err) {
         console.log(err);
-    }        
+    }                 
 };
 
-// run puppeteer
-(async () => {         
-    const browser = await puppeteer.launch({ headless: false });    
-    const page = await browser.newPage();     
-    page.setViewport({ width: 1680, height: 1200 });
-    await page.goto(baseURL);
-            
-    // get the whole content of site
-    const HTML_DOM = await page.content();             
-    writeFile(HTML_DOM, `${savedFilename}IG`, 'html');
-
-    // ====================================================== \\
-    // fetch demanded DOM    
-    let storyData = await page.evaluate(() => {    
-        let storyImgEl = document.querySelectorAll(`ul.YlNGR > li img`);
-
-        // convert NodeList into native JS array using spread ES6
-        storyImgEl = [...storyImgEl];
-
-        let storyData = storyImgEl.map(el => ({
-            src: el.getAttribute('src'),
-            alt: el.getAttribute('alt'),
-            class: el.getAttribute('class')
-        }));               
-
-        return storyData;
-    })     
-                   
+const crawlMainData = async (page) => {    
     let mainData = await page.evaluate(() => {
         let mainDataEl = document.querySelectorAll(`img.FFVAD`);
 
@@ -86,22 +65,26 @@ const download = async (uri, filename, cb) => {
         }));
 
         return mainData;
-    })
+    })    
 
-    // ====================================================== \\
-    // fetch data to local 
-    storyData.forEach(data => storyDataJSON.push({ 
-        src: data['src'], 
-        alt: data['alt'],
-        class: data['class']
-    }));    
-    
-    mainData.forEach(data => {
+    return mainData;
+};
+
+const crawlHTML = async (page) => {
+    const HTML_DOM = await page.content();             
+    writeFile(HTML_DOM, `${savedFilename}IG`, 'html');
+}
+
+const saveMainDataToFile = async (container) => {
+    let containerJSON = [],
+        imgSourcesSetContainer = [];
+
+    container.forEach(data => {
         let pos = data['srcset'].lastIndexOf(',')+1,
             demandedURL = data['srcset'].substring(pos, data['srcset'].length-5);
         imgSourcesSetContainer.push(demandedURL);
 
-        mainDataJSON.push({ 
+        containerJSON.push({ 
             srcset: data['srcset'],
             src: data['src'], 
             alt: data['alt']
@@ -109,24 +92,33 @@ const download = async (uri, filename, cb) => {
     });       
 
     // save data to local files
-    mainDataJSON = await JSON.stringify(mainDataJSON, null, '\t');
-    storyDataJSON = await JSON.stringify(storyDataJSON, null, '\t');
+    containerJSON = await JSON.stringify(containerJSON, null, '\t');
+    writeFile(containerJSON, `${savedFilename}MainData`, 'json');    
 
-    writeFile(mainDataJSON, `${savedFilename}MainData`, 'json');
-    writeFile(storyDataJSON, `${savedFilename}StoryData`, 'json');             
+    imgSourcesSetContainer.forEach((imgSrc, index) => download(imgSrc));    
+}
 
-    imgSourcesSetContainer.forEach((imgSrc, index) => {                   
-        download(imgSrc, `/img${index}.jpg`, () => {
-            console.log(`Done: ${savedFilename}: ${index}`);
-        });               
-    });
+// run puppeteer
+const getData = async () => {             
+    const browser = await puppeteer.launch({ headless: false });    
+    const page = await browser.newPage();     
+    page.setViewport({ width: 1680, height: 1200 });
+    await page.goto(baseURL);
+    
+    crawlHTML(page);
+    
+    let mainData =  await crawlMainData(page);
+    saveMainDataToFile(mainData);
+            
+    // write user infor after get information
+    fs.appendFile('../data/ListOfUsers.txt', `name: ${savedFilename}, URL: ${baseURL}` + '\n', 'utf8', (err) => {
+        if(err) throw err;
+        console.log('Data are written into ListOfUsers.txt');
+    })
 
-    await page.waitFor(5000);
+    await page.waitFor(5000);    
+    console.log('Stop crawling data!');
     await browser.close();
-})();
+};
 
-// write user infor after get information
-fs.appendFile('../data/ListOfUsers.txt', `name: ${savedFilename}, URL: ${baseURL}` + '\n', 'utf8', (err) => {
-    if(err) throw err;
-    // console.log('Data are written into ListOfUsers.txt');
-})
+getData();
